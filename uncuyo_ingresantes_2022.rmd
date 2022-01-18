@@ -1,0 +1,518 @@
+---
+title: Análisis de datos de los ingresantes a los colegios de la Universidad Nacional
+  de Cuyo para el año 2022.
+author: "Rodrigo Gonzalez"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_notebook
+# output: bookdown::html_document2
+---
+
+Todos los años alrededor de noviembre, miles de estudiantes de primaria en la provincia de Mendoza postulan a una vacante para ingresar a algunas de las 5 escuelas secundarias que posee la [Universidad Nacional de Cuyo](https://www.uncuyo.edu.ar/secundarios) (UNCuyo) en el Gran Mendoza. Estos colegios son Colegio Universitario Central "José de San Martín" (CUC), Departamento de Educación Docente (DAD), Liceo Agrícola y Enológico "Domingo F. Sarmiento" (LAE), Escuela de Magisterio (MAG) y Escuela de Comercio "Martín Zapata" (MZ). A su vez, cada colegio ofrece diferentes orientaciones como en Economía, Ciencias Sociales, Ciencias Naturales, Informática, entre otras. Los 5 colegios ofrecen 8 orientaciones en total.
+
+Los postulantes compiten con un promedio que se forma al tomar las notas de cuarto a sexto grado de Lengua, Matemáticas, Ciencias Sociales, Ciencias Naturales, Educación Física y Educación Artística. Por otra parte, los postulantes deben determinar el orden de preferencia de las 13 ofertas de escuela y orientación, de mayor a menor (ver tabla 3). Así, mientras mayor sea su promedio, más probable será obtener un banco en el colegio y orientación deseados, según el orden asignado.
+
+El objetivo de este informe es el de analizar cómo se distribuyen los promedios de los ingresantes por orden de mérito, para de esta manera ver las notas máximas y notas de corte por orientación, qué colegios y orientaciones son los más competitivos y cuáles menos. Adicionalmente, se revelan las preferencias de ingreso de los egresados de la escuela primaria Carmen Vera Arena. 
+
+Todo el código utilizado en este informe es en el lenguaje de programación R y se brinda en este repositorio en [Github](https://github.com/rodralez/uncuyo-ingreso).
+
+## Extracción de datos
+
+Los resultados de la convocatoria son publicados por la UNCuyo en este [documento](https://www.uncuyo.edu.ar/academica/upload/informe-1-ingresantes-2022-orientadas-por-numinsc1.pdf) para los colegios CUC, DAD, MAG y MZ, y en este [documento](https://lae.uncuyo.edu.ar/upload/1-listado-orden-de-merito-lae-2022.pdf) para el LAE, ambos en formato pdf. Dichos documentos contienen una tabla con el número de inscripción, el promedio del ingresante y el colegio y orientación a la que ha accedido. Es necesario extraer estos datos para facilitar su análisis en R. 
+
+<!-- Previamente los documentos se separan en páginas individuales para facilitar la extracción de los datos. Esto se logra al ejecutar en consola de Linux el comando, -->
+
+<!-- ``` -->
+<!-- $ pdftk in.pdf burst -->
+<!-- ``` -->
+
+Los datos se pasan a texto plano. Se obtienen datos tabulados con una clara regularidad. Se utilizan las bibliotecas ``pdftools`` y ``readr`` para pasar los datos de pdf a texto plano y de texto plano al formato ``dataframe``. 
+
+<!-- Las funciones ``uncu_2_df`` y ``lae_2_df`` se proveen al final de este informe, en la sección Anexo.  -->
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(pdftools)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tibble)
+library(kableExtra)
+library(DT)
+
+
+# Datos del CUC, DAD, MAG, MZ
+
+n_pag <- 18   # Numeros de paginas en el pdf 
+
+df <- vector(mode = "list", length = n_pag)
+
+for (idx in 1:n_pag) 
+{
+    pdf_file <- sprintf("./pg_00%02d.pdf", idx)
+    
+    text <- pdf_text(pdf_file)
+    
+    data <- uncu_2_df(text)
+    
+    df[[idx]] <- data
+}
+
+# Hacer un solo df
+for (idx in 1:n_pag) 
+{
+  if(idx == 1)
+  {
+    data_uncu <- df[[idx]]
+  }  
+  else
+  {
+    data_uncu <-rbind(data_uncu, df[[idx]]) 
+  }
+}
+
+# Datos del LAE
+
+n_pag <- 2   # Numeros de paginas en el pdf 
+
+df <- vector(mode = "list", length = n_pag)
+
+for (idx in 1:n_pag) 
+{
+  pdf_file <- sprintf("./lae-%d.pdf", idx)
+  
+  text <- pdf_text(pdf_file)
+  
+  data <- lae_2_df(text)
+  
+  df[[idx]] <- data
+}
+
+# Hacer un solo df
+for (idx in 1:n_pag) 
+{
+  if(idx == 1)
+  {
+    data_lae <- df[[idx]]
+  }  
+  else
+  {
+    data_lae <-rbind(data_lae, df[[idx]]) 
+  }
+}
+
+```
+
+## Análisis
+
+<!-- Como los datos de LAE se toman por separado, se unen los dataframes de todos los colegios para unificar el análisis. Solo interesan la escuela, orientación y promedio de cada ingresante. -->
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(tidyr)
+
+# Se seleccionan algunas columnas
+data_uncu_sm <- data_uncu %>% select(Escuela, Orientacion, Promedio)
+
+# Se unen los dos datasets
+data_sm <- rbind(data_uncu_sm, data_lae)
+```
+
+### Total de ingresantes por orden de mérito
+
+La UNCuyo ofrece un total de 1.020 vacantes para los colegios secundarios del Gran Mendoza.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+# Total de vacantes en CUC, DAD, LAE, MAG, MZ
+vacantes_c <- c( 60*3, 120*3, 90, 30+90+30, 120+60+60)
+
+sum(vacantes_c)
+```
+
+De un total de 1.020 vacantes, se otorgaron 971 plazas. Las restantes 49 vacantes son tomadas por los alumnos del colegio primario Carmen Vera Arena (CVA). Este colegio pertenece también a la UNCuyo y sus egresados tienen asegurada una plaza en alguno de los colegios de la UNCuyo, según el colegio y orientación que elijan.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+# Total de ingresantes
+ingresantes <- nrow (data_sm)
+
+ingresantes
+
+cva <- vacantes_c - ingresantes
+```
+
+### Ingresantes por escuela
+
+En la tabla \@ref(tab:ingre_escuela) se muestra cómo se distribuyen por colegio los ingresantes por orden de mérito y los ingresantes del CVA. Además se muestra el porcentaje de ingresos del CVA. La tabla se ordena por la cantidad de ingresos del CVA, de mayor a menor.
+
+```{r ingre_escuela, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+data_c <- data_sm %>% group_by(Escuela) %>% 
+                      summarise( Ingresantes = n() ) %>% 
+                      add_column(Vacantes = vacantes_c, .after = "Escuela") %>% 
+                      mutate(CVA = Vacantes - Ingresantes) %>% 
+                      mutate(`CVA_%` = CVA / 49 * 100) #%>%
+                      #mutate(`CVA_%`= cell_spec('CVA_%', "html", color = ifelse(`CVA_%` > 20, "red", "blue")))
+
+options(digits = 3)
+
+data_c  %>% 
+  arrange(desc(CVA)) %>% 
+  print.data.frame() %>%
+  kbl(caption = "Tabla 1: Distribución de los ingresantes por escuela.") %>%
+  kable_classic(full_width = F, html_font = "Cambria", ) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) 
+
+# data_c  %>% 
+#   arrange(desc(CVA)) %>% 
+#   print.data.frame() %>%
+#   datatable(class = "display")
+
+# %>%
+#   column_spec(5, color = ifelse(data_c$`CVA_%` > 20, "red", "blue"))    
+  # column_spec(5, bold = ifelse(data_c$`CVA_%`> 20, T, F) )
+```
+
+Se observa que el 40% de los egresados de CVA ha elegido ingresar al CUC. Le siguen MZ con un 22% y DAD con un 20%. Esto es un adelanto de las preferencias de los ingresantes por órden de mérito que se observarán en las siguientes secciones. 
+
+### Ingresantes por orientación
+
+En la tabla  \@ref(tab:ingre_or) se unifican las orientaciones que ofrecen los 5 colegios y se expone cómo se distribuyen por orientación los ingresantes por orden de mérito y los ingresantes del CVA. Además se muestra el porcentaje de ingresos del CVA. La tabla se ordena por la cantidad de ingresos del CVA, de mayor a menor.
+
+```{r ingre_or, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+# Total de vacantes por orientacion
+vacantes_or <- c( 60, # Artes 
+                  30+60+120, # Ciencias Naturales
+                  60+90+60+120,  # Ciencias Sociales
+                  30, # Comunicación
+                  120, # Economía
+                  60, # Informática
+                  120, # Lenguas
+                  90 # Tecnología Alimentaria
+)
+data_or <- data_sm %>% group_by(Orientacion) %>% 
+                      summarise( Ingresantes = n() ) %>% 
+                      add_column(Vacantes = vacantes_or, .after = "Orientacion") %>%
+                      mutate(CVA = Vacantes - Ingresantes) %>%
+                      mutate('CVA_%' = CVA / 49 * 100)
+
+options(digits = 3)
+
+data_or  %>% 
+  arrange(desc(CVA)) %>% 
+  print.data.frame() %>%
+  kbl(caption = "Tabla 2: Distribución de los ingresantes por orientación.") %>%
+  kable_classic(full_width = F, html_font = "Cambria")  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+### Ingresantes por escuela y orientación
+
+En la tabla  \@ref(tab:ingre_es_or)se muestran cómo se distribuyen por escuela y por orientación los ingresantes por orden de mérito y los ingresantes del CVA. Además, se muestra el porcentaje de ingresos del CVA y el porcentaje de vacantes efectivas, esto es, las vacantes que no fueron tomadas por los alumnos del CVA. La tabla se ordena por el porcentaje de vacantes efectivas, de menor a mayor.
+
+```{r ingre_es_or, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+# Vacantes en CUC, DAD, LAE, MAG, MZ
+vacantes_o <- c( 60, 60, 60, 
+              120, 120, 120, 
+              90,
+              30, 90, 30,
+              60, 120, 60)
+
+data_o <- data_sm %>% group_by(Escuela, Orientacion) %>% 
+                      summarise(Ingresantes = n() ) %>% 
+                      add_column(Vacantes = vacantes_o, .after = "Orientacion") %>% 
+                      mutate(CVA = Vacantes - Ingresantes) %>% 
+                      mutate('CVA_%' = CVA / 49 * 100) %>% 
+                      mutate('Vacantes_ef_%' = (Vacantes - CVA) / Vacantes * 100)
+
+data_o  %>% 
+  arrange_at('Vacantes_ef_%') %>% 
+  print.data.frame() %>%
+  kbl(caption = "Tabla 3: Distribución de los ingresantes por escuela y orientación.") %>%
+  kable_classic(full_width = F, html_font = "Cambria")  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) 
+# %>%
+#   column_spec(7,  color = "white",
+#     background = spec_color(1:13, end = 0.75))
+  # column_spec(7, color = "white",
+  # background = spec_color(data_o$`Vacantes_ef_%`[1:12], end = 0.9),
+  # popover = paste("am:", data_o$`Vacantes_ef_%`[1:12]))
+```
+
+Se observa que los alumnos del CVA prefieren un 20% Artes del CUC, un 18% Informática del MZ y un 14% Ciencias Naturales del CUC. Debido a que estas orientaciones tienen solo 60 vacantes en total, esto produce que se ofrezcan relativamente menos plazas para los ingresantes por orden de mérito en dichas orientaciones. Esto se observa en los porcentajes de vacantes efectivas con 83%, 85% y 88%, respectivamente para las orientaciones recién mencionadas. Al final de la tabla se observa que solo 1 alumno del CVA ha elegido ingresar a Ciencias Sociales del DAD. El resto de las Ciencias Sociales de MAG y MZ no han recibido alumnos del CVA, por lo que las vacantes efectivas de estas dos últimas orientaciones son del 100%.
+
+### Análisis estadístico por orientación
+
+En esta sección se expone el análisis estadístico de los promedios de los ingresantes por orden de mérito (sin CVA), lo que deriva en obtener los mejores promedios y promedios de corte por orientación. La siguiente tabla muestra por orientación: el promedio más alto (Maximo), el promedio de corte o mínimo promedio (Corte) y la mediana de los promedios (Mediana), todos ordenados por el promedio de corte, de mayor a menor. 
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+data_sta <- data_sm %>% group_by(Escuela, Orientacion) %>% 
+                        summarise(Maximo = max(Promedio), 
+                                  Corte = min(Promedio),
+                                  Mediana = median(Promedio),
+                        )
+
+options(digits = 4)
+
+data_sta %>% arrange(desc(Corte)) %>% print.data.frame() %>%
+  kbl(caption = "Tabla 4: Análisis estadístico por orientación.") %>%
+  kable_classic(full_width = F, html_font = "Cambria")  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) 
+```
+
+Se observa que las mayores notas de cortes están en Ciencias Naturales del CUC, Informática del MZ y Artes y Ciencias Sociales, ambos del CUC. Esto quiere decir que los ingresantes con mejores promedios han postulado a algunas de estas 4 orientaciones. Por otro lado, Lenguas en DAD presenta la nota de corte más baja. Cabe destacar que la mediana de Ciencias Naturales del CUC es de 10, lo que indica que al menos la mitad de los ingresantes en esta orientación tiene un promedio igual a 10.
+
+### ¿A qué escuelas y orientaciones van los 10?
+
+Se analiza a continuación a qué escuelas y orientación postulan aquellos ingresantes que tienen un promedio igual a 10, es decir, los ingresantes con los promedios más altos. Los datos se ordenan por el porcentajes de dieces, de mayor a menor.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+data_d <- data_sm %>% group_by(Escuela, Orientacion) %>% 
+                      filter (Promedio == 10.000) %>% 
+                      summarise(Dieces = n())  %>% 
+                      add_column(Ingresantes = data_o$Ingresantes, .after = "Orientacion") %>% 
+                      mutate(`Dieces_%` = Dieces/Ingresantes*100)
+
+options(digits = 3)
+
+arrange(data_d, desc(`Dieces_%`))  %>% print.data.frame() %>%
+  kbl(caption = "Tabla 5: Distribución por escuela y orientación de los promedios iguales a 10.") %>%
+  kable_classic(full_width = F, html_font = "Cambria")  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) 
+```
+En la tabla 5 claramente se ve que el CUC es el colegio que más demanda tiene por los ingresantes con promedio 10 con 54%, 46% y 42% de dieces para Ciencias Naturales, Arte y Ciencias Sociales, respectivamente. Le sigue Informática del MZ con 39%. Se confirma que, con un 54%, al menos la mitad de los ingresantes a Ciencias Naturales del CUC tienen promedio igual a 10. Al final de la tabla aparece Lenguas del DAD, lo cual es esperable ya que es la orientación que tiene menor nota de corte (ver tabla 4).
+
+## Distribución de los promedios por rangos 
+
+En las figuras 1 y 2 se dividen los promedios de los ingresantes por orden de mérito en 5 rangos. Se muestra en un gráfico aluvional cómo se distribuyen estos promedios por colegio y por orientación.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+library(ggalluvial)
+library("viridis")  
+library(ggforce)
+library(forcats)
+library(ggrepel)
+
+# Se crea un nuevo dataframe para graficar los rangos de notas
+data_alu <- data_sm  %>% ungroup()  %>% 
+  mutate(Ingresantes = row_number(), .before = "Escuela") %>% 
+  group_by(Rangos      = cut(Promedio, breaks = c(9.70, 9.85,  9.90,  9.95,  9.999, 10.00) ) ) %>% 
+  group_by(Rango_label = cut(Promedio, breaks = c(9.70, 9.85,  9.90,  9.95,  9.999, 10.00) ) ) %>% 
+  mutate(. , Rango_label = fct_recode(Rango_label , "R1" = "(9.999,10]" )) %>%
+  mutate(. , Rango_label = fct_recode(Rango_label , "R2" = "(9.95,9.999]" )) %>%
+  mutate(. , Rango_label = fct_recode(Rango_label , "R3" = "(9.9,9.95]" )) %>%
+  mutate(. , Rango_label = fct_recode(Rango_label , "R4" = "(9.85,9.9]" )) %>%
+  mutate(. , Rango_label = fct_recode(Rango_label , "R5" = "(9.7,9.85]" )) %>%
+  group_by(Orientacion, Escuela, Promedio)
+
+# Grafico Aluvional 1
+g <- data_alu  %>%  
+  ggplot( aes(
+              axis1 = Rango_label, 
+              axis2 = Escuela,
+              axis3 = Orientacion, ), 
+          ) + # 
+  # geom_alluvium( aes(fill = Rangos, color = Rangos ),
+                 # width = 1/12 ,
+                 # alpha = 0.35 ,
+                 # reverse = FALSE,
+                 # )  +
+  geom_flow(aes(fill = Rangos, color = Rangos ), 
+            curve_type = "sigmoid",
+            width = 1/10,
+            alpha = 0.75,
+            reverse = FALSE,) +   
+  geom_stratum(width = 1/6 , fill = "white",
+               color = "black",
+               reverse = FALSE,
+               # position = 1,
+               )  +
+  # geom_label(stat = "stratum",
+  #            aes(label = after_stat(stratum)),
+  #            reverse = FALSE,
+  #            size = 3,
+  #            color = "black",
+  #            ) +
+  scale_x_discrete(limits = c("Rangos", "Escuela", "Orientacion"),
+                   expand = c(0.2 , 0.2) ) +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis( discrete = TRUE, option = "D") + 
+  #=========================================================
+ ggrepel::geom_text_repel(
+  aes(label = ifelse(after_stat(x) == 1, as.character(after_stat(stratum)), NA)),
+  stat = "stratum", size = 3.65, direction = "y", nudge_x = 0, reverse = FALSE,
+) +  ggrepel::geom_text_repel(
+  aes(label = ifelse(after_stat(x) == 2, as.character(after_stat(stratum)), NA)),
+  stat = "stratum", size = 3.65, direction = "y", nudge_x = 0 , reverse = FALSE,
+) +  ggrepel::geom_text_repel(
+  aes(label = ifelse(after_stat(x) == 3, as.character(after_stat(stratum)), NA)),
+  stat = "stratum", size = 3.65, direction = "y", nudge_x = +.35, reverse = FALSE,
+) +
+  #=========================================================
+  theme_bw() +
+  ggtitle("Figura 1: Distribución de promedios por rangos, escuelas y orientaciones.")
+
+# Grafico Aluvional 2
+g2 <- data_alu  %>%  
+  ggplot( aes(
+              axis1 = Rango_label, 
+              axis2 = Orientacion, ), 
+          ) + # 
+  # geom_alluvium( aes(fill = Rangos, color = Rangos ),
+                 # width = 1/12 ,
+                 # alpha = 0.35 ,
+                 # reverse = FALSE,
+                 # )  +
+  geom_flow(aes(fill = Rangos, color = Rangos ), 
+            curve_type = "sigmoid",
+            width = 1/10,
+            alpha = 0.75,
+            reverse = FALSE,) +   
+  geom_stratum(width = 1/10 , fill = "white",
+               color = "black",
+               reverse = FALSE,
+               # position = 1,
+               )  +
+  # geom_label(stat = "stratum",
+  #            aes(label = after_stat(stratum)),
+  #            reverse = FALSE,
+  #            size = 3,
+  #            color = "black",
+  #            ) +
+  scale_x_discrete(limits = c("Rangos", "Orientacion"),
+                   expand = c(0.2 , 0.2) ) +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_fill_viridis( discrete = TRUE, option = "D") + 
+  #=========================================================
+ ggrepel::geom_text_repel(
+  aes(label = ifelse(after_stat(x) == 1, as.character(after_stat(stratum)), NA)),
+  stat = "stratum", size = 3.65, direction = "y", nudge_x = 0, reverse = FALSE,
+) +  ggrepel::geom_text_repel(
+  aes(label = ifelse(after_stat(x) == 2, as.character(after_stat(stratum)), NA)),
+  stat = "stratum", size = 3.65, direction = "y", nudge_x = +.35, reverse = FALSE,
+) +
+  #=========================================================
+  theme_bw() +
+  ggtitle("Figura 2: Distribución de promedios por rangos y orientaciones.")
+
+aspect_ratio <- 1.75
+ggsave("./uncu_alu.png",    g, height = 6 , width = 6 * aspect_ratio)
+
+aspect_ratio <- 1.75
+ggsave("./uncu_alu_2.png", g2, height = 6 , width = 6 * aspect_ratio)
+
+```
+
+![Figura 1: Distribución de promedios por rangos, escuelas y orientaciones.](./uncu_alu.png)
+
+El eje _y_ de las figuras 1 y 2 representa la cantidad de ingresantes por orden de mérito en total para el año, un total de 971. Y las alturas de las cajas tantas para los rangos (R1, R2, R3, etc.), escuelas y orientaciones representan la proporcion de ingresantes que se encuentran en cada una de estas categorías. Como se expuso enla tabla 2, se corrobora que Ciencias Sociales es la orientación que más vacantes ofrece, un total de 326. Le siguen Ciencias Naturales, Economía y Lenguas. 
+
+La figura 1 muestra que los promedios en el rango R1, promedios de 9,999 a 10,00, es decir, los promedios iguales a 10 (color amarillo) se reparten mayoritariamente entre el CUC y el MZ. Esta situación se repite con los promedios en el rango R2, promedios de 9,95 a 9,999 (color verde claro). CUC y MZ solo reciben promedios de R1, R2 y R3. Se observa que el DAD recibe prácticamente el total de promedios en R5, promedios de 9,7 a 9,85 (color morado).
+
+![Figura 2: Distribución de promedios por rangos y orientaciones.](./uncu_alu_2.png)
+La figura 2 muestra cómo se distribuyen los promedios por orientación. Cabe destacar que Informática solo recibe promedios de R1 y R2. Por otro parte, Arte, Comunicación y Economía del MZ reciben promedios de R1, R2 y R3. En el otro extremo, Leguas del DAD recibe la mayor parte de R5, el rango con los promedios más bajos. 
+
+## Conclusiones
+
+En este reporte se analiza los datos provisto por la UNCuyo para el ingreso de alumnos de primaria a las escuelas secundarias dependientes de la UNCuyo en el año 2022. Se expone información adicional respecto con la cual se puede llegar a las siguientes conclusiones.
+
+Una primera conclusión que se puede sacar es que CUC es el rey. Es el colegio con mayor demanda por parte de los alumnos del CVA y posee las notas de corte más altas para sus 3 orientaciones. Además, es la escuela que alberga más ingresantes por orden de mérito con promedio igual a 10. Esto produce que ingresar al CUC sea más difícil y competitivo. Según las notas de corte, al CUC le siguen los colegios MZ, MAG, LAE, y finalmente el DAD.
+
+Por el lado de las orientaciones, se observa la gran demanda que tienen Artes e Informática. Ambas orientaciones ofrecen 60 plazas cada una, pero los alumnos del CVA toman 10 y 9 plazas respectivamente, siendo estas orientaciones las más demandadas por los egresados del CVA. En consecuencia, la vacantes efectivas fueron de 50 plazas para Arte y de 51 plazas para Informática. Esta alta demanda también se observa en los ingresantes por orden de mérito ya que Informática solo recibe ingresantes del grupo R1 y R2 (ver figura 2), y Artes solo recibe de los grupos R1, R2 y R3. El resto de las orientaciones reciben ingresantes de los 5 grupos. Esta situación hace que estas orientaciones sean muy competitivas. Si bien Ciencias Naturales del CUC es la escuela y orientación con mayor nota de corte y mayor cantidad de ingresantes con promedio igual a 10, esta orientación también se encuentra en las escuelas MAG y DAD, lo que produce que globalmente sea una de las orientaciones más accesible para su ingreso. En el otro extremo se encuentra Lenguas. Esta orientación ofrece 120 vacantes y solo 4 alumnos del CVA la han elegido. Esta orientación recibe su gran mayoría de ingresantes por orden de mérito del grupo R5, lo que produce que sea la orientación con la menor nota de corte.
+
+A la luz de estos resultados, es evidente que la demanda por ingresar a Artes e Informática es mucho mayor que la oferta de vacantes ofrecidas por la UNCuyo. Una posible solución para mitigar esta situación sería la de reasignar recursos, al disminuir la oferta de plazas en Lenguas y aumentar las vacantes en Artes e Informática. De esta manera se podría satisfacer de mejor manera la actual demanda que tienen estas orientaciones.
+
+
+
+<!-- ## Anexo -->
+
+<!-- Función ``uncu_2_df``. -->
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+uncu_2_df <- function(text)
+{
+  write.csv( text, file="./text.txt",
+             col.names = FALSE,
+             row.names = FALSE )
+  data <- readr::read_fwf(
+    file = "./text.txt",
+    col_positions = fwf_widths( c(21, 50, 36, 22, 15) ,
+                                col_names = c("Preinscripcion",
+                                              "Escuela",
+                                              "Orientacion",
+                                              "Promedio",
+                                              "Aleatorio")
+                    ),
+    col_types = c("i", "c", "c", "d", "i") ,
+    skip = 5,
+  )
+  data <- data %>% filter (!is.na(Preinscripcion))
+
+  data <- data %>%
+    mutate_at("Promedio", str_replace, "," , ".") %>%
+    mutate_at("Escuela", str_replace,
+              "Colegio Universitario Central José de San Martin" , "CUC") %>%
+    mutate_at("Escuela", str_replace,
+              "Departamento de Aplicación Docente" , "DAD") %>%
+    mutate_at("Escuela", str_replace,
+              "Escuela de Comercio Martín Zapata" , "MZ") %>%
+    mutate_at("Escuela", str_replace,
+              "Escuela del Magisterio" , "MAG") %>%
+    mutate_at("Orientacion", str_replace,
+              "Ciencias Sociales y Humanidades" , "Ciencias Sociales") %>%
+    mutate_at("Orientacion", str_replace,
+              "Arte Multimedia" , "Arte") %>%
+    mutate_at("Orientacion", str_replace,
+              "Economía y Administración" , "Economía") %>%
+    arrange( match(Escuela, c("CUC", "MZ", "MAG", "DAD") ) )
+
+  options(digits = 6)
+  data <- data %>% mutate ( Promedio = as.double(Promedio))
+
+  system("rm ./text.txt")
+
+  return(data)
+}
+```
+
+<!-- Función ``lae_2_df``. -->
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+lae_2_df <- function(text)
+{
+  write.csv( text, file="./text.txt",
+             col.names = FALSE,
+             row.names = FALSE )
+  data <- readr::read_fwf(
+    file = "./text.txt",
+    col_positions = fwf_widths( c(28, 20, 8) ,
+                                col_names = c("Orden",
+                                              "Preinscripcion",
+                                              "Promedio")
+    ),
+    col_types = c("i", "i", "d") ,
+    skip = 3,
+  )
+  data <- data %>% filter (!is.na(Preinscripcion))
+
+  data <- data %>%
+    mutate_at("Promedio", str_replace, "," , ".") %>%
+    add_column(Escuela = "LAE", .before = "Promedio") %>%
+    add_column(Orientacion = "Tecnología Alimentaria", .before = "Promedio") %>%
+    select(Escuela, Orientacion, Promedio)
+
+  options(digits = 6)
+  data <- data %>% mutate ( Promedio = as.double(Promedio))
+
+  system("rm ./text.txt")
+
+  return(data)
+}
+```
+
