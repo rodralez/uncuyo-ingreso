@@ -1,0 +1,148 @@
+---
+title: Análsis de los datos de los ingresantes a los colegios secundarios dependientes
+  de la Universidad Nacional de Cuyo en 2022.
+output:
+  html_document:
+    df_print: paged
+---
+
+# Carga de los datos
+```{r message=FALSE, warning=FALSE}
+
+library(pdftools)
+library(readr)
+library(tidyr)
+
+rm(list = ls()) # clean global environment
+
+# FUNCTIONS
+text_2_df <- function(text)
+{
+  write.csv( text, file="./text.txt",
+             col.names = FALSE,
+             row.names = FALSE )
+  data <- readr::read_fwf(
+    file = "./text.txt",
+    # col_positions = fwf_widths( c(21, 50, 34, 14, 13) ,
+    col_positions = fwf_widths( c(21, 50, 36, 22, 15) ,
+                                col_names = c("Preinscripcion",
+                                              "Escuela",
+                                              "Orientacion",
+                                              "Promedio",
+                                              "Aleatorio") 
+                    ),
+    col_types = c("i", "c", "c", "d", "i") ,
+    skip = 5,
+  )
+  data <- data %>% filter (!is.na(Preinscripcion))
+  
+  data <- data %>%
+    mutate_at("Promedio", str_replace, "," , ".")
+
+  options(digits = 6)
+  data <- data %>% mutate ( Promedio = as.double(Promedio))
+  
+  system("rm ./text.txt")
+  
+  return(data)
+}
+
+setwd("/home/rodralez/hostdir/pruebas/")
+
+df <- vector(mode = "list", length = 18)
+
+idx = 2L
+
+for (idx in 1:18) 
+{
+    pdf_file <- sprintf("./pg_00%02d.pdf", idx)
+    
+    text <- pdf_text(pdf_file)
+    
+    data <- text_2_df(text)
+    
+    df[[idx]] <- data
+}
+
+# Hacer un solo df
+for (idx in 1:18) 
+{
+  if(idx == 1)
+  {
+    data_uncu <- df[[idx]]
+  }  
+  else
+  {
+    data_uncu <-rbind(data_uncu, df[[idx]]) 
+  }
+}
+
+# Clean temporary variables
+rm (df, data, idx, pdf_file, text)
+
+```
+
+# Analisis de los datos
+```{r message=FALSE, warning=FALSE}
+
+data_sm <- data_uncu %>% select(Escuela, Orientacion, Promedio)
+
+# Ingresantes totales  
+total_ingresantes <- nrow (data_sm)
+
+# CUC, DAT, MZ, MG
+total <- c( 60*3, 120*3, 120+60+60, 30+90+30)
+
+data_t <- data_sm %>% group_by(Escuela) %>% 
+                      summarise( ingresantes = n() ) %>% 
+                      add_column(total = total, .after = "ingresantes") %>% 
+                      mutate(CVA = total - ingresantes)
+
+# Ingresantes por orientacion
+
+# CUC, DAT, MZ, MG
+total_o <- c( 60, 60, 60, 
+              120, 120, 120, 
+              60, 120, 60, 
+              30, 90, 30)
+
+data_o <- data_sm %>% group_by(Escuela, Orientacion) %>% 
+                      summarise( ingresantes = n() ) %>% 
+                      add_column(total = total_o, .after = "ingresantes") %>% 
+                      mutate(CVA = total - ingresantes)
+
+# Total de ingresantes vs alumnos del CVA
+data_x <- data_o %>% ungroup() %>% summarise( total_i = sum(ingresantes) , total_cva = sum(CVA))
+
+# Estadisticas, Mejores promedios por orientacion
+data_s <- data_sm %>% group_by(Escuela, Orientacion) %>% 
+                      summarise( max = max(Promedio), min = min(Promedio),
+                                 mean = mean(Promedio), median = median(Promedio), 
+                                 sd = sd(Promedio) )
+
+data_d <- data_sm %>% group_by(Escuela, Orientacion) %>% 
+                      filter (Promedio == 10.000) %>% 
+                      summarise( dieces = n() )
+```
+
+# Gráficos
+```{r message=FALSE, warning=FALSE}
+
+library(ggplot2)
+library(dplyr)
+library(hrbrthemes)
+
+# Build dataset with different distributions
+data <- data.frame(
+  type = c( rep("variable 1", 1000), rep("variable 2", 1000) ),
+  value = c( rnorm(1000), rnorm(1000, mean=4) )
+)
+
+# Represent it
+p <- data_uncu %>% group_by(Escuela, Orientacion) %>% 
+  ggplot( aes(x=value, fill=type)) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
+    scale_fill_manual(values=c("#69b3a2", "#404080")) 
+
+```
+
