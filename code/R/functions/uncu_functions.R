@@ -101,7 +101,7 @@ lae_2_df <- function(text)
   options(digits = 6)
   data <- data %>% mutate ( Promedio = as.double(Promedio) / 1000)
   
-  # system("rm ./text.txt")
+  system("rm ./text.txt")
   
   return(data)
 }
