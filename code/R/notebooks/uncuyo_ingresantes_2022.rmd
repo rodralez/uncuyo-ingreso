@@ -24,8 +24,30 @@ font-size: 20pt;
 h4{
 font-size: 18pt;
 }
-
 </style>
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+rm(list = ls()) # clean global environment
+cat("\014")  # clean the console
+setwd("/home/rodralez/hostdir/uncuyo-ingreso/")
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+source("/home/rodralez/hostdir/uncuyo-ingreso/code/R/functions/uncu_pdf_table.R")
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+library(pdftools)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tibble)
+library(kableExtra)
+library(DT)
+library(tidyr)
+```
 
 Todos los años alrededor de noviembre, miles de estudiantes del nivel de educación primaria en la provincia de Mendoza postulan a una vacante para ingresar a algunas de las 5 escuelas secundarias que posee la [Universidad Nacional de Cuyo](https://www.uncuyo.edu.ar/secundarios) (UNCuyo) en el Gran Mendoza. Estos colegios son Colegio Universitario Central "José de San Martín" (CUC), Departamento de Aplicación Docente (DAD), Liceo Agrícola y Enológico "Domingo F. Sarmiento" (LAE), Escuela del Magisterio (MAG) y Escuela de Comercio "Martín Zapata" (MZ). A su vez, cada colegio ofrece diferentes orientaciones como en Economía, Ciencias Sociales, Ciencias Naturales, Informática, entre otras. Los 5 colegios ofrecen 8 orientaciones en total. Cabe mencionar que el LAE hace su selección de ingreso antes y por separado del resto de los 4 colegios restantes. De todas formas, se ha decidido incluirlo en este análisis.
 
@@ -79,7 +101,7 @@ df <- vector(mode = "list", length = n_pag)
 
 for (idx in 1:n_pag)
 {
-  pdf_file <- sprintf("./pg_00%02d.pdf", idx)
+  pdf_file <- sprintf("../../../doc/pg_00%02d.pdf", idx)
   
   text <- pdf_text(pdf_file)
   
@@ -100,6 +122,9 @@ for (idx in 1:n_pag)
     data_uncu <-rbind(data_uncu, df[[idx]])
   }
 }
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 
 # Datos del LAE
 
@@ -109,7 +134,7 @@ df <- vector(mode = "list", length = n_pag)
 
 for (idx in 1:n_pag)
 {
-  pdf_file <- sprintf("./lae-%d.pdf", idx)
+  pdf_file <- sprintf("../../../doc/lae-%d.pdf", idx)
   
   text <- pdf_text(pdf_file)
   
@@ -435,159 +460,6 @@ Finalmente, queremos compartir que durante la elaboración de este informe técn
 Los autores agradecen los comentarios y correcciones de la Prof. María Elena Armendariz, Psicopedagoga y Profesora en Ciencias Psicopedagógicas, los cuales han ayudado a enriquecer este reporte.
 
 
-<!-- ## Anexo: funciones auxiliares -->
-
-<!-- Función ``uncu_2_df``. -->
-
-
-```{r message=FALSE, warning=FALSE, echo=FALSE}
-
-uncu_2_df <- function(text)
-{
-  write.csv( text, file="./text.txt",
-             col.names = FALSE,
-             row.names = FALSE )
-  data <- readr::read_fwf(
-    file = "./text.txt",
-    col_positions = fwf_widths( c(21, 50, 36, 22, 15) ,
-                                col_names = c("Preinscripcion",
-                                              "Escuela",
-                                              "Orientacion",
-                                              "Promedio",
-                                              "Aleatorio")
-    ),
-    col_types = c("i", "c", "c", "d", "i") ,
-    skip = 5,
-  )
-  data <- data %>% filter (!is.na(Preinscripcion))
-  
-  data <- data %>%
-    mutate_at("Promedio", str_replace, "," , ".") %>%
-    mutate_at("Escuela", str_replace,
-              "Colegio Universitario Central José de San Martin" , "CUC") %>%
-    mutate_at("Escuela", str_replace,
-              "Departamento de Aplicación Docente" , "DAD") %>%
-    mutate_at("Escuela", str_replace,
-              "Escuela de Comercio Martín Zapata" , "MZ") %>%
-    mutate_at("Escuela", str_replace,
-              "Escuela del Magisterio" , "MAG") %>%
-    mutate_at("Orientacion", str_replace,
-              "Ciencias Sociales y Humanidades" , "Ciencias Sociales") %>%
-    mutate_at("Orientacion", str_replace,
-              "Arte Multimedia" , "Arte") %>%
-    mutate_at("Orientacion", str_replace,
-              "Economía y Administración" , "Economía") %>%
-    arrange( match(Escuela, c("CUC", "MZ", "MAG", "DAD") ) )
-  
-  options(digits = 6)
-  data <- data %>% mutate ( Promedio = as.double(Promedio))
-  
-  system("rm ./text.txt")
-  return(data)
-}
-
-```
-
-<!-- Función ``lae_2_df``. -->
-
-```{r message=FALSE, warning=FALSE, echo=FALSE}
-
-lae_2_df <- function(text)
-{
-  write.csv( text, file="./text.txt",
-             col.names = FALSE,
-             row.names = FALSE )
-  data <- readr::read_fwf(
-    file = "./text.txt",
-    col_positions = fwf_widths( c(28, 20, 8) ,
-                                col_names = c("Orden",
-                                              "Preinscripcion",
-                                              "Promedio")
-    ),
-    col_types = c("i", "i", "d") ,
-    skip = 3,
-  )
-  data <- data %>% filter (!is.na(Preinscripcion))
-  
-  data <- data %>%
-    mutate_at("Promedio", str_replace, "," , ".") %>%
-    add_column(Escuela = "LAE", .before = "Promedio") %>%
-    add_column(Orientacion = "Tecnología Alimentaria", .before = "Promedio") %>%
-    select(Escuela, Orientacion, Promedio)
-  
-  options(digits = 6)
-  data <- data %>% mutate ( Promedio = as.double(Promedio))
-  
-  system("rm ./text.txt")
-  
-  return(data)
-}
-```
-
-<!-- Función ``plot_alu_e``. -->
-
-```{r message=FALSE, warning=FALSE, echo=FALSE}
-
-plot_alu_e <- function(data, text_cap)
-{
-  data %>%
-    
-    ggplot( aes(
-      axis1 = Etiqueta,
-      axis2 = Orientacion, ),
-    ) + #
-    # geom_alluvium( aes(fill = Rangos, color = Rangos ),
-    # width = 1/12 ,
-    # alpha = 0.35 ,
-    # reverse = FALSE,
-    # ) +
-    geom_flow(aes(fill = Rangos, color = Rangos ),
-              curve_type = "sigmoid",
-              width = 1/10,
-              alpha = 0.75,
-              reverse = FALSE,) + 
-    geom_stratum(width = 1/6 , fill = "white",
-                 color = "black",
-                 reverse = FALSE,
-                 # position = 1,
-    ) +
-    # geom_label(stat = "stratum",
-    #            aes(label = after_stat(stratum)),
-    #            reverse = FALSE,
-    #            size = 3,
-    #            color = "black",
-    #            ) +
-    scale_x_discrete(limits = c("Rangos", "Orientacion"),
-                     expand = c(0.2 , 0.2) ) +
-    scale_color_viridis(discrete = TRUE, option = "D") +
-    scale_fill_viridis( discrete = TRUE, option = "D") +
-    #=========================================================
-  ggrepel::geom_text_repel(
-    aes(label = ifelse(after_stat(x) == 1, as.character(after_stat(stratum)), NA)),
-    stat = "stratum", size = 3.65, direction = "y", nudge_x = 0, reverse = FALSE,
-  ) + ggrepel::geom_text_repel(
-    aes(label = ifelse(after_stat(x) == 2, as.character(after_stat(stratum)), NA)),
-    stat = "stratum", size = 3.65, direction = "y", nudge_x = +.35, reverse = FALSE,
-  ) +
-    #=========================================================
-  theme_bw() +
-    theme(text = element_text(size = 13, family = 'Arial')) +
-    theme(plot.title = element_text(size = 13, family = 'Arial')) +
-    ggtitle(text_cap)
-  
-}
-
-#   #=========================================================
-#  ggrepel::geom_text_repel(
-#   aes(label = ifelse(after_stat(x) == 1, as.character(after_stat(stratum)), NA)),
-#   stat = "stratum", size = 3.65, direction = "y", nudge_x = 0, reverse = FALSE,
-# ) +  ggrepel::geom_text_repel(
-#   aes(label = ifelse(after_stat(x) == 2, as.character(after_stat(stratum)), NA)),
-#   stat = "stratum", size = 3.65, direction = "y", nudge_x = +.35, reverse = FALSE,
-# ) +
-#   #=========================================================
-
-```
 </br>
 </br>
 </br>
