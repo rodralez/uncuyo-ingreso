@@ -27,6 +27,9 @@ font-size: 18pt;
 
 </style>
 
+
+
+
 Todos los años alrededor de noviembre, miles de estudiantes del nivel de educación primaria en la provincia de Mendoza postulan a una vacante para ingresar a algunas de las 5 escuelas secundarias que posee la [Universidad Nacional de Cuyo](https://www.uncuyo.edu.ar/secundarios) (UNCuyo) en el Gran Mendoza. Estos colegios son Colegio Universitario Central "José de San Martín" (CUC), Departamento de Aplicación Docente (DAD), Liceo Agrícola y Enológico "Domingo F. Sarmiento" (LAE), Escuela del Magisterio (MAG) y Escuela de Comercio "Martín Zapata" (MZ). A su vez, cada colegio ofrece diferentes orientaciones como en Economía, Ciencias Sociales, Ciencias Naturales, Informática, entre otras. Los 5 colegios ofrecen 8 orientaciones en total. Cabe mencionar que el LAE hace su selección de ingreso antes y por separado del resto de los 4 colegios restantes. De todas formas, se ha decidido incluirlo en este análisis.
 
 Los ingresantes a las escuelas de nivel secundario de la UNCuyo se dividen en dos grupos bien definidos.
@@ -68,6 +71,10 @@ library(tidyr)
 
 ```
 
+```{r}
+source("../functions/uncu_functions.R")
+source("../functions/uncu_pdf_table.R")
+```
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
 
@@ -79,7 +86,7 @@ df <- vector(mode = "list", length = n_pag)
 
 for (idx in 1:n_pag)
 {
-  pdf_file <- sprintf("./pg_00%02d.pdf", idx)
+  pdf_file <- sprintf("../../../doc/pg_00%02d.pdf", idx)
   
   text <- pdf_text(pdf_file)
   
@@ -100,7 +107,14 @@ for (idx in 1:n_pag)
     data_uncu <-rbind(data_uncu, df[[idx]])
   }
 }
+```
 
+```{r}
+source("../functions/uncu_functions.R")
+source("../functions/uncu_pdf_table.R")
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 # Datos del LAE
 
 n_pag <- 2  # Numeros de paginas en el pdf
@@ -109,7 +123,7 @@ df <- vector(mode = "list", length = n_pag)
 
 for (idx in 1:n_pag)
 {
-  pdf_file <- sprintf("./lae-%d.pdf", idx)
+  pdf_file <- sprintf("../../../doc/lae_0%d.pdf", idx)
   
   text <- pdf_text(pdf_file)
   
