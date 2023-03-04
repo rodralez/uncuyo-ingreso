@@ -430,35 +430,34 @@ g5 <- data_alu %>% filter(Escuela == "DAD") %>%
 aspect_ratio <- 1.75
 he <- 6
 we <- 6
-ggsave("./uncu_alu_1.png", g1, height = he , width = we * aspect_ratio)
-ggsave("./uncu_alu_2.png", g2, height = he , width = we * aspect_ratio)
-ggsave("./uncu_alu_3.png", g3, height = he , width = we * aspect_ratio)
-ggsave("./uncu_alu_4.png", g4, height = he , width = we * aspect_ratio)
-ggsave("./uncu_alu_5.png", g5, height = he , width = we * aspect_ratio)
+ggsave("../../../images/uncu_alu_1.png", g1, height = he , width = we * aspect_ratio)
+ggsave("../../../images/uncu_alu_2.png", g2, height = he , width = we * aspect_ratio)
+ggsave("../../../images/uncu_alu_3.png", g3, height = he , width = we * aspect_ratio)
+ggsave("../../../images/uncu_alu_4.png", g4, height = he , width = we * aspect_ratio)
+ggsave("../../../images/uncu_alu_5.png", g5, height = he , width = we * aspect_ratio)
 # ggsave("./uncu_alu_6.png", g6, height = he , width = we * aspect_ratio)
 
 
 ```
 
-![](./uncu_alu_1.png)
+![](../../../images/uncu_alu_1.png)
 La figura 1 expone que el CUC solo recibe promedios de los rangos R1 y R2. Se verifica que Ciencias Naturales solo admite los mejores promedios, mayoritariamente los que están en el rango R1.
 
 
-![](./uncu_alu_2.png)
+![](../../../images/uncu_alu_2.png)
 La figura 2 muestra que el MZ solo recibe promedios de los rangos R1 y R2. Informática está compuesta mayoritariamente por promedios del rango R1. Economía capta promedios de los rangos R1 y R2. Finalmente, Ciencias Sociales recibe mayoritariamente promedios de R2.
 
-![](./uncu_alu_3.png)
+![](../../../images/uncu_alu_3.png)
 Se observa en la figura 3, como en el caso del CUC, Ciencias Naturales del MAG también recibe los mejores promedios en los rangos R1 y R2. Las restantes orientaciones, Comunicación y Ciencias Sociales, reciben promedios de los rangos R1, R2 y R3 en prácticamente las mismas proporciones.
 
 
-![](./uncu_alu_4.png)
+![](../../../images/uncu_alu_4.png)
 En la figura 4 se ve que la única orientación que ofrece el LAE recibe promedios de los 3 primeros rangos, mayoritariamente de R2.
 
-![](./uncu_alu_5.png)
+![](../../../images/uncu_alu_5.png)
 
 La figura 5 expone que más de la mitad de los ingresantes del DAD están en el rango R3. Es la única escuela que recibe ingresantes del rango R4, y en una única orientación, Lenguas.
 
-<!-- ![](./uncu_alu_6.png) -->
 
 ## Conclusiones
 
@@ -476,12 +475,6 @@ Una solución para mitigar esta situación es la crear nuevas divisiones para In
 
 Finalmente, cabe dedicar algunas palabras a los ingresantes por orden de mérito con promedio igual a 10. 
 <!-- Cabe destacar que de un total de  ingresantes por orden de mérito,  poseen un promedio igual a 10, esto es, casi un `r round(sum(data_dc$Dieces)/sum(data_dc$Ingresantes))*100`% del total de ingresantes poseen los promedios más altos posibles.  --> De un total de `r sum(data_dc$Ingresantes)` ingresantes por orden de mérito, `r sum(data_dc$Dieces)` tienen el más alto promedio. Esto se traduce en que el `r round(sum(data_dc$Dieces)/sum(data_dc$Ingresantes)*100)`% de los ingresantes solo obtuvieron notas iguales a 10 entre cuarto y sexto grados. Si bien esta cifra parece bastante alta, sería conveniente conocer el total de postulantes, los que ingresaron y los que no, para llegar a una respuesta concluyente. Adicionalmente, como se señalara más arriba, 50 de los 54 ingresantes por orden de mérito a Informática tienen promedio 10, esto es, han sido abanderados en sus escuelas primarias de origen. Aun sin tener en cuenta a los 6 ingresantes del CVA, los cuales quizás también han aportado 1 abanderado extra. ¿Podemos llamar a Informática la Orientación de los Abanderados? ;-)
-
-<!-- Finalmente, queremos compartir que durante la elaboración de este informe técnico, al tratar este tema con diferentes personas, siempre surgió la pregunta de que si el sistema de ingreso basado en postular con un promedio de notas del nivel primario es un sistema justo, o al menos más justo que el sistema anterior, el cual estaba basado en tomar un examen de ingreso. Queremos destacar esto porque, al parecer, es una pregunta que se hace mucha gente. El sistema actual de ingreso se basa en la hipótesis de que todas las escuelas del nivel inicial de la provincia de Mendoza tienen el mismo nivel de exigencia. En principio, esta parece una hipótesis muy fuerte. Está claro que esta hipótesis no puede ser ni aceptada ni rechazada con los datos que se usaron durante este trabajo. Para ello, a nuestro entender, deberíamos tener datos del desempeño de los ingresantes durante su primer año de secundaria. De esta forma se podría saber si alumnos que ingresaron con un promedio alto luego tuvieron un desempeño satisfactorio según los estándares de las escuelas de nivel secundario de la UNCuyo, o no. Y en consecuencia, poder saber si el sistema de ingreso por promedio de notas garantiza que ingresen los mejores alumnos. -->
-
-<!-- ## Agradecimiento -->
-
-<!-- Los autores agradecen los comentarios y correcciones de la Prof. María Elena Armendariz, Psicopedagoga y Profesora en Ciencias Psicopedagógicas, los cuales han ayudado a enriquecer este reporte. -->
 
 
 </br>

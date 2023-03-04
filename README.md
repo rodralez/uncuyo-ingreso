@@ -1,4 +1,7 @@
 
+<!-- include the HTML file -->
+<iframe src="code/R/notebooks/uncuyo_ingresantes_2023.html" width="100%" height="500px"></iframe>
+
 # Análisis de datos de los ingresantes a los colegios de la Universidad Nacional de Cuyo para el año 2022
 
 ## Autores: Rodrigo Gonzalez y Carlos A. Catania
